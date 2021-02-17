@@ -1,0 +1,157 @@
+在C++中除了类中可以有构造函数和析构函数外，结构体中也可以包含构造函数和析构函数，这是因为结构体和类基本雷同，唯一区别是，类中成员变量默认为私有，而结构体中则为公有。
+注意，C++中的结构体是可以有析构函数和构造函数，而C则不允许。而共用体，它是不可能有析构函数和构造函数的。结构体变量所占内存长度是各成员占的内存长度之和，每个成员分别占有自己的内存单元。
+共用体变量所占的内存长度等于最长的成员的长度。即它是一种内存覆盖，也就是说，同一块内存在不同的时刻存储不同的值（可以是不同的类型）。
+
+typedef struct struct_exp
+{
+	struct struct_exp Exp1;    //结构体struct_exp还没定义好，编译器不知道该类型所需多大空间，因此会报错
+	struct struct_exp * pExp2;	// pExp2是一个指针，OK
+	void fun1(struct struct_exp Exp3); /*Exp3是一个结构体变量做函数参数：
+										（1）函数参数在运行时才会压栈，因此编译是没有问题的；
+										（2）运行时，结构体类型已经是定义好的，因此也不会有问题*/
+	void fun2(struct struct_exp * pExp4); //pExp4是一个指针做函数参数，也是OK的
+}struct_exp_t；
+注意：
+上面例子在说明定义自身类型成员以及指针时，用的是struct struct_exp，而不是struct_exp_t。
+
+结构体中包含构造函数
+struct CV_EXPORTS_W_SIMPLE DMatch
+{
+    CV_WRAP DMatch() : queryIdx(-1), trainIdx(-1), imgIdx(-1), distance(FLT_MAX) {}
+    CV_WRAP DMatch( int _queryIdx, int _trainIdx, float _distance ) :
+            queryIdx(_queryIdx), trainIdx(_trainIdx), imgIdx(-1), distance(_distance) {}
+    CV_WRAP DMatch( int _queryIdx, int _trainIdx, int _imgIdx, float _distance ) :
+            queryIdx(_queryIdx), trainIdx(_trainIdx), imgIdx(_imgIdx), distance(_distance) {}
+ 
+    CV_PROP_RW int queryIdx; // query descriptor index
+    CV_PROP_RW int trainIdx; // train descriptor index
+    CV_PROP_RW int imgIdx;   // train image index
+ 
+    CV_PROP_RW float distance;
+ 
+    // less is better
+    bool operator<( const DMatch &m ) const
+    {
+        return distance < m.distance;
+    }
+};
+
+
+构造函数，说白了，就是初始化。
+具体的打法是这个样子的：
+
+struct node{
+	//构造函数
+	node()//形参表
+	{
+		//内容
+	}
+};
+
+例子：
+
+struct node{
+	node(int c)
+	{
+		x=c;
+		y=z=0;
+	}
+	int x,y,z;
+};
+
+当然，他既然作为一个函数，那么在里面自然能够塞一些其他东西，比如说跑个SPFA呀、弄个Hello World呀，都是没有什么问题的。
+
+但是假如像上面一样写的话，严格来说这不是初始化，而是赋值，假如要做到初始化的话，可以打成下面这种形式：
+
+struct node{
+	node(int c):x(0),y(c){}//注意这对象征性地大括号不能丢
+	int x,y;
+};
+
+下面来看一个程序，找找错误在哪里
+
+#include <cstdio>
+
+struct node{
+	node(int c):x(c){}
+	int x;
+};
+
+int main()
+{
+	node a;
+	printf("%d",a.x);
+}
+
+答案：node a;
+
+这就是struct的一个特性了，假如有了构造函数，那么定义的时候，就必须给构造函数提供参数。因为构造函数的触发条件是：定义。
+
+没错，一定义就会触发。为什么呢？可以参考一下变量的初始化，如果有了构造函数，那么就相当于告诉了系统这个东西要如何初始化，那么系统在对它初始化的时候，就会调用形参表里面的东西，但如果你不给它，就出问题了。
+
+所以，上面的程序的正确打法是这样的：
+
+#include <cstdio>
+
+struct node{
+	node(int c):x(c){}
+	int x;
+};
+
+int main()
+{
+	node a(5);
+	printf("%d",a.x);
+}
+
+还有一点需要注意，假如形参表里面没有参数，那么在定义的时候，就不需要加括号了，假如加了括号，而括号里面没有东西的话，那么这条语句的意思就是声明一个返回值为node类型的函数了。（总之别作死就是了）
+
+例子：
+
+#include <cstdio>
+
+struct node{
+	node():x(1){}
+	int x;
+};
+
+int main()
+{
+	node a;
+	printf("%d",a.x);
+}
+
+然后，一个结构体也是可以有多个构造函数的，灵活运用会很方便，但是要求每个构造函数内的形参表不能一样，例：
+
+#include <cstdio>
+
+struct node{
+	int x;
+	node(int z):x(z){}
+	node():x(1){}
+};
+
+int main()
+{
+	node a;
+	node b(5);
+	printf("%d %d\n",a.x,b.x);
+}
+函数中可以输出hello world
+#include <stdio.h>
+
+struct node{
+	int x;
+	node(int z):x(z){}
+	node():x(1){
+		printf("hello world\n");
+	}
+};
+
+int main()
+{
+	node a;
+	node c();
+	node b(5);
+	printf("%d %d\n",a.x,b.x);
+}
